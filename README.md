@@ -98,3 +98,184 @@ Finally, save all the changes with this command and then use the "exit" command 
 mysql> FLUSH PRIVILEGES;
 mysql> exit
 ```
+## NTP
+### Server setup
+Install the package for ntp
+```bash
+sudo apt install ntp
+```
+
+configure the ntp server
+
+```bash
+sudo nano /etc/ntp.conf
+```
+
+add ntp servers such as 
+```bash
+0.us.pool.ntp.org
+```
+or a similar server for your locale
+
+restart the ntp server
+```bash
+sudo systemctl restart ntp
+```
+
+### client setup
+Install packages
+```bash
+sudo apt install ntpdate
+```
+
+Set the ntp server connection
+```bash
+sudo ntpdate "10.10.0.14"
+```
+Disable default time sync
+```bash
+sudo timedatectl set-ntp off
+```
+
+Install ntp daemon
+```bash
+sudo apt install ntp
+```
+
+Add the following line to the configuration file: /etc/ntp.conf
+```bash
+server 10.10.0.14
+```
+restart ntp client
+```bash
+sudo systemctl restart ntp
+```
+
+Check the ntp configuration queue
+```bash
+ntpq -p
+```
+
+# Syslog
+Install the syslog package
+```bash
+sudo apt install rsyslog -y
+```
+
+Open the configuration file for syslog
+```bash
+nano /etc/rsyslog.conf
+```
+
+uncomment the following lines
+```
+$ModLoad imudp
+$UDPServerRun 514
+$ModLoad imtcp
+$InputTCPServerRun 514
+```
+
+define subnet, ip and domain of accessible computers
+
+```
+$AllowedSender TCP, 127.0.0.1, 10.10.0.0/28, *.ddp.local
+$AllowedSender UDP, 127.0.0.1, 10.10.0.0/28, *.ddp.local
+```
+
+Tell syslog where to store log files
+
+```
+$template remote-incoming-logs, "/var/log/%HOSTNAME%/%PROGRAMNAME%.log" 
+*.* ?remote-incoming-logs
+
+```
+
+Check for syntax errors in configuration file
+```bash
+rsyslogd -f /etc/rsyslog.conf -N1
+```
+
+### Configure client
+open configuration file
+```
+nano /etc/rsyslog.conf
+```
+
+Add this to end of file
+```
+##Enable sending of logs over UDP add the following line:
+
+*.* @10.10.0.14:514
+
+
+##Enable sending of logs over TCP add the following line:
+
+*.* @@10.10.0.14:514
+
+##Set disk queue when rsyslog server will be down:
+
+$ActionQueueFileName queue
+$ActionQueueMaxDiskSpace 1g
+$ActionQueueSaveOnShutdown on
+$ActionQueueType LinkedList
+$ActionResumeRetryCount -1
+```
+
+restart syslog on client
+
+```
+systemctl restart rsyslog
+```
+
+# Postfix mail server
+Install postfix
+```
+sudo apt install postfix
+```
+
+Go through configuration wizard on screen
+
+### Map mail addresses to linux accounts
+
+Open config file
+```bash
+sudo nano /etc/postfix/virtual
+```
+add email entries for users here
+```
+amf@ddp.is AndFri
+stg@ddp.is SteGis
+```
+Apply the mapping
+```bash
+sudo postmap /etc/postfix/virtual
+```
+restart postfix
+```bash
+sudo systemctl restart postfix
+```
+
+### Adjust firewall
+
+Allow postfix connections through ufw firewall
+```bash
+sudo ufw allow postfix
+```
+
+### Setup mail client
+
+install snail for managing mail
+```bash
+sudo apt install s-nail
+```
+edit snail settings file
+```bash
+sudo nano /etc/s-nail.rc
+```
+add the following to the file
+```
+set emptystart
+set folder=Maildir
+set record=+sent
+```
+
